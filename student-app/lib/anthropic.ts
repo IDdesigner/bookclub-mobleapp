@@ -1,9 +1,9 @@
 import { Assignment, AssignmentRubric, TutorTurn } from '../types/database.types';
 
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const ANTHROPIC_API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
 
-if (!OPENAI_API_KEY) {
-  console.warn('Warning: EXPO_PUBLIC_OPENAI_API_KEY is not set');
+if (!ANTHROPIC_API_KEY) {
+  console.warn('Warning: EXPO_PUBLIC_ANTHROPIC_API_KEY is not set');
 }
 
 interface TutorContext {
@@ -13,9 +13,6 @@ interface TutorContext {
   currentRubricIndex: number;
 }
 
-/**
- * Build the system prompt for the AI tutor
- */
 function buildSystemPrompt(context: TutorContext): string {
   const { assignment, rubrics, currentRubricIndex } = context;
   const currentRubric = rubrics[currentRubricIndex] || rubrics[0];
@@ -62,14 +59,10 @@ INSTRUCTIONS:
 Remember: Keep your responses SHORT and CONVERSATIONAL for voice interaction.`;
 }
 
-/**
- * Generate the next tutor question or response using OpenAI GPT-4
- */
 export async function generateTutorResponse(context: TutorContext): Promise<string> {
   try {
     const systemPrompt = buildSystemPrompt(context);
 
-    // Build conversation history for OpenAI
     const messages = context.conversationHistory
       .filter(turn => turn.content && turn.content.trim().length > 0)
       .map(turn => ({
@@ -77,55 +70,47 @@ export async function generateTutorResponse(context: TutorContext): Promise<stri
         content: turn.content,
       }));
 
-    // If this is the first message, add an initial user prompt
     if (messages.length === 0) {
       messages.push({
         role: 'user',
-        content: 'Hello, I\'m ready to discuss the reading assignment.',
+        content: "Hello, I'm ready to discuss the reading assignment.",
       });
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 300,
-        temperature: 0.7,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages,
-        ],
+        system: systemPrompt,
+        messages,
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      throw new Error(`Anthropic API error: ${error}`);
     }
 
     const data = await response.json();
 
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('No response from OpenAI');
+    if (!data.content || !data.content[0] || data.content[0].type !== 'text') {
+      throw new Error('No response from Anthropic');
     }
 
-    return data.choices[0].message.content;
+    return data.content[0].text;
   } catch (error) {
     console.error('Error generating tutor response:', error);
     throw error;
   }
 }
 
-/**
- * Determine if we should move to the next rubric
- * This is a simple implementation - you could make this more sophisticated
- */
 export function shouldMoveToNextRubric(conversationHistory: TutorTurn[], currentRubricIndex: number): boolean {
-  // Count turns for the current rubric (rough heuristic: 4-6 turns per rubric)
   const turnsPerRubric = 6;
   const totalTurns = conversationHistory.length;
   const expectedTurnsForCurrentRubric = (currentRubricIndex + 1) * turnsPerRubric;
