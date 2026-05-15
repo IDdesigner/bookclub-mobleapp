@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, IconButton, ActivityIndicator, Button } from 'react-native-paper';
+import { Text, Card, IconButton, ActivityIndicator, Button, Snackbar } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -25,6 +25,7 @@ export default function TutorSessionVoiceScreen() {
   const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
+  const [abandonSnackbarVisible, setAbandonSnackbarVisible] = useState(false);
 
   const { data: session } = useQuery({
     queryKey: ['session', sessionId],
@@ -411,12 +412,48 @@ export default function TutorSessionVoiceScreen() {
 
         <Button
           mode="outlined"
-          onPress={async () => {
+          onPress={() => {
             Alert.alert(
               'End Conversation',
-              'Are you sure you want to end this conversation? Your responses will be graded.',
+              'How would you like to end this session?',
               [
-                { text: 'Cancel', style: 'cancel' },
+                { text: 'Back To Test', style: 'cancel' },
+                {
+                  text: 'End Without Grading',
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (!assignment || !studentId) return;
+
+                    setIsProcessing(true);
+                    try {
+                      await supabase
+                        .from('tutor_sessions')
+                        .update({ status: 'abandoned', completed_at: new Date().toISOString() })
+                        .eq('id', sessionId);
+
+                      const { data: existingAssignment } = await supabase
+                        .from('student_assignments')
+                        .select('*')
+                        .eq('student_id', studentId)
+                        .eq('assignment_id', assignment.id)
+                        .maybeSingle();
+
+                      if (existingAssignment?.status === 'in_progress') {
+                        await supabase
+                          .from('student_assignments')
+                          .update({ status: 'not_started', updated_at: new Date().toISOString() })
+                          .eq('id', existingAssignment.id);
+                      }
+
+                      setAbandonSnackbarVisible(true);
+                    } catch (error) {
+                      console.error('Error abandoning session:', error);
+                      Alert.alert('Error', 'Failed to end the session. Please try again.');
+                    } finally {
+                      setIsProcessing(false);
+                    }
+                  },
+                },
                 {
                   text: 'End & Grade',
                   onPress: async () => {
@@ -427,20 +464,17 @@ export default function TutorSessionVoiceScreen() {
 
                     setIsProcessing(true);
                     try {
-                      // 1. Complete the session
                       await supabase
                         .from('tutor_sessions')
                         .update({ status: 'completed', completed_at: new Date().toISOString() })
                         .eq('id', sessionId);
 
-                      // 2. Grade the conversation
                       const gradeResult = await gradeConversation({
                         assignment,
                         rubrics,
                         conversationHistory: messages,
                       });
 
-                      // 3. Save the grade
                       const { error: gradeError } = await supabase
                         .from('session_grades')
                         .insert([{
@@ -452,7 +486,6 @@ export default function TutorSessionVoiceScreen() {
 
                       if (gradeError) throw gradeError;
 
-                      // 4. Update or create student_assignment status
                       const { data: existingAssignment } = await supabase
                         .from('student_assignments')
                         .select('*')
@@ -461,7 +494,6 @@ export default function TutorSessionVoiceScreen() {
                         .maybeSingle();
 
                       if (existingAssignment) {
-                        // Update existing
                         await supabase
                           .from('student_assignments')
                           .update({
@@ -474,7 +506,6 @@ export default function TutorSessionVoiceScreen() {
                           })
                           .eq('id', existingAssignment.id);
                       } else {
-                        // Create new
                         await supabase
                           .from('student_assignments')
                           .insert([{
@@ -488,7 +519,6 @@ export default function TutorSessionVoiceScreen() {
                           }]);
                       }
 
-                      // 5. Navigate to results screen
                       router.replace(`/session-results/${sessionId}`);
                     } catch (error) {
                       console.error('Error grading conversation:', error);
@@ -508,6 +538,17 @@ export default function TutorSessionVoiceScreen() {
           End Conversation
         </Button>
       </View>
+
+      <Snackbar
+        visible={abandonSnackbarVisible}
+        duration={2500}
+        onDismiss={() => {
+          setAbandonSnackbarVisible(false);
+          router.replace('/(tabs)/assignments');
+        }}
+      >
+        Session ended — no grade recorded
+      </Snackbar>
     </View>
   );
 }
