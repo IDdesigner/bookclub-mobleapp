@@ -52,11 +52,14 @@ export default function TestModeSelectionScreen() {
       .maybeSingle();
 
     if (existingAssignment) {
-      // Update existing to in_progress
+      // Only update to 'in_progress' if status is 'not_started'
+      // If it's 'retake' or 'completed', keep that status
+      const newStatus = existingAssignment.status === 'not_started' ? 'in_progress' : existingAssignment.status;
+
       await supabase
         .from('student_assignments')
         .update({
-          status: 'in_progress',
+          status: newStatus,
           current_session_id: session.id,
           updated_at: new Date().toISOString(),
         })

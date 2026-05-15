@@ -134,7 +134,7 @@ export default function AssignmentsScreen() {
       case 'retake':
         return 'Retake';
       case 'in_progress':
-        return 'In Progress';
+        return 'Started';
       default:
         return 'Not Started';
     }
@@ -223,7 +223,7 @@ export default function AssignmentsScreen() {
           >
             <Menu.Item onPress={() => { setStatusFilter('all'); setStatusMenuVisible(false); }} title="All Status" />
             <Menu.Item onPress={() => { setStatusFilter('not_started'); setStatusMenuVisible(false); }} title="Not Started" />
-            <Menu.Item onPress={() => { setStatusFilter('in_progress'); setStatusMenuVisible(false); }} title="In Progress" />
+            <Menu.Item onPress={() => { setStatusFilter('in_progress'); setStatusMenuVisible(false); }} title="Started" />
             <Menu.Item onPress={() => { setStatusFilter('retake'); setStatusMenuVisible(false); }} title="Retake" />
             <Menu.Item onPress={() => { setStatusFilter('completed'); setStatusMenuVisible(false); }} title="Completed" />
           </Menu>
@@ -323,10 +323,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     flexWrap: 'wrap',
+    marginBottom: 8,
   },
   filterButton: {
-    flex: 1,
-    minWidth: 100,
+    marginRight: 4,
   },
   resultsText: {
     marginTop: 8,

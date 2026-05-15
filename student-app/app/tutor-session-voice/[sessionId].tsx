@@ -274,12 +274,15 @@ export default function TutorSessionVoiceScreen() {
         await sound.unloadAsync();
       }
 
-      // Set audio mode for playback (not recording)
+      // Set audio mode for playback using loudspeaker (bottom speaker)
+      // Use playback category which routes to speaker by default
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        staysActiveInBackground: false, // Set to false for playback category
         shouldDuckAndroid: false,
+        interruptionModeIOS: 1, // Mix with others - routes to speaker
+        playThroughEarpieceAndroid: false, // Use loudspeaker on Android
       });
 
       const { sound: newSound } = await Audio.Sound.createAsync(
@@ -287,6 +290,8 @@ export default function TutorSessionVoiceScreen() {
         {
           shouldPlay: true,
           volume: 1.0, // Maximum volume
+          isMuted: false,
+          isLooping: false,
         }
       );
 
