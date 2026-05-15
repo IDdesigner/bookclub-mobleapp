@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm uninstall *)",
+      "Bash(node -e \"const p = require\\('./node_modules/@testing-library/react-native/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(npm test *)",
+      "Bash(node *)"
+    ]
+  }
+}

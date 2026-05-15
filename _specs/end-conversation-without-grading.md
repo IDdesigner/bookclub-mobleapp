@@ -69,5 +69,5 @@ Buttons (in display order):
 
 ## Open Questions
 
-1. Should **End Without Grading** show a brief confirmation toast/snackbar ("Session ended — no grade recorded") after navigating away?
-2. What `status` value should be written to `tutor_sessions` for an abandoned session? Confirm the column accepts `'abandoned'` or use an existing value like `'ended'`.
+1. Should **End Without Grading** show a brief confirmation toast/snackbar ("Session ended — no grade recorded") after navigating away? Sure, I like the sound of that. 
+2. What `status` value should be written to `tutor_sessions` for an abandoned session? Confirm the column accepts `'abandoned'` or use an existing value like `'ended'`. I like the use of `'abandonded'`, but it might not exist as an option so we might have to add. 
