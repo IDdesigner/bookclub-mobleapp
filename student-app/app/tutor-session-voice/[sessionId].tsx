@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, IconButton, ActivityIndicator, Button, Snackbar } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,7 +24,7 @@ export default function TutorSessionVoiceScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
+  const hasStartedRef = useRef(false);
   const [abandonSnackbarVisible, setAbandonSnackbarVisible] = useState(false);
 
   const { data: session } = useQuery({
@@ -101,8 +101,8 @@ export default function TutorSessionVoiceScreen() {
       });
 
       // Start the conversation if not started
-      if (!hasStarted && assignment && rubrics && (!messages || messages.length === 0)) {
-        setHasStarted(true);
+      if (!hasStartedRef.current && assignment && rubrics && (!messages || messages.length === 0)) {
+        hasStartedRef.current = true;
         await startConversation();
       }
     })();
